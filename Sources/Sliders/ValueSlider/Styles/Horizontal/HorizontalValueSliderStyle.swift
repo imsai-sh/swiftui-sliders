@@ -7,6 +7,38 @@ public struct HorizontalValueSliderStyle<Track: View, Thumb: View>: ValueSliderS
     private let thumbInteractiveSize: CGSize
     private let options: ValueSliderOptions
 
+    fileprivate func dragGesture(configuration: Self.Configuration,geometry:GeometryProxy) -> _EndedGesture<_ChangedGesture<DragGesture>> {
+        return DragGesture(minimumDistance: 0)
+            .onChanged { gestureValue in
+                configuration.onEditingChanged(true)
+                
+                if configuration.dragOffset.wrappedValue == nil {
+                    configuration.dragOffset.wrappedValue = gestureValue.startLocation.x - distanceFrom(
+                        value: configuration.value.wrappedValue,
+                        availableDistance: geometry.size.width,
+                        bounds: configuration.bounds,
+                        leadingOffset: self.thumbSize.width / 2,
+                        trailingOffset: self.thumbSize.width / 2
+                    )
+                }
+                
+                let computedValue = valueFrom(
+                    distance: gestureValue.location.x - (configuration.dragOffset.wrappedValue ?? 0),
+                    availableDistance: geometry.size.width,
+                    bounds: configuration.bounds,
+                    step: configuration.step,
+                    leadingOffset: self.thumbSize.width / 2,
+                    trailingOffset: self.thumbSize.width / 2
+                )
+                
+                configuration.value.wrappedValue = computedValue
+            }
+            .onEnded { _ in
+                configuration.dragOffset.wrappedValue = nil
+                configuration.onEditingChanged(false)
+            }
+    }
+    
     public func makeBody(configuration: Self.Configuration) -> some View {
         let track = self.track
             .environment(\.trackValue, configuration.value.wrappedValue)
@@ -21,22 +53,23 @@ public struct HorizontalValueSliderStyle<Track: View, Thumb: View>: ValueSliderS
             ZStack {
                 if self.options.contains(.interactiveTrack) {
                     track.gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { gestureValue in
-                                configuration.onEditingChanged(true)
-                                let computedValue = valueFrom(
-                                    distance: gestureValue.location.x,
-                                    availableDistance: geometry.size.width,
-                                    bounds: configuration.bounds,
-                                    step: configuration.step,
-                                    leadingOffset: self.thumbSize.width / 2,
-                                    trailingOffset: self.thumbSize.width / 2
-                                )
-                                configuration.value.wrappedValue = computedValue
-                            }
-                            .onEnded { _ in
-                                configuration.onEditingChanged(false)
-                            }
+                        dragGesture(configuration: configuration, geometry: geometry)
+//                        DragGesture(minimumDistance: 0)
+//                            .onChanged { gestureValue in
+//                                configuration.onEditingChanged(true)
+//                                let computedValue = valueFrom(
+//                                    distance: gestureValue.location.x,
+//                                    availableDistance: geometry.size.width,
+//                                    bounds: configuration.bounds,
+//                                    step: configuration.step,
+//                                    leadingOffset: self.thumbSize.width / 2,
+//                                    trailingOffset: self.thumbSize.width / 2
+//                                )
+//                                configuration.value.wrappedValue = computedValue
+//                            }
+//                            .onEnded { _ in
+//                                configuration.onEditingChanged(false)
+//                            }
                     )
                 } else {
                     track
@@ -58,35 +91,7 @@ public struct HorizontalValueSliderStyle<Track: View, Thumb: View>: ValueSliderS
                     y: geometry.size.height / 2
                 )
                 .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { gestureValue in
-                            configuration.onEditingChanged(true)
-
-                            if configuration.dragOffset.wrappedValue == nil {
-                                configuration.dragOffset.wrappedValue = gestureValue.startLocation.x - distanceFrom(
-                                    value: configuration.value.wrappedValue,
-                                    availableDistance: geometry.size.width,
-                                    bounds: configuration.bounds,
-                                    leadingOffset: self.thumbSize.width / 2,
-                                    trailingOffset: self.thumbSize.width / 2
-                                )
-                            }
-
-                            let computedValue = valueFrom(
-                                distance: gestureValue.location.x - (configuration.dragOffset.wrappedValue ?? 0),
-                                availableDistance: geometry.size.width,
-                                bounds: configuration.bounds,
-                                step: configuration.step,
-                                leadingOffset: self.thumbSize.width / 2,
-                                trailingOffset: self.thumbSize.width / 2
-                            )
-
-                            configuration.value.wrappedValue = computedValue
-                        }
-                        .onEnded { _ in
-                            configuration.dragOffset.wrappedValue = nil
-                            configuration.onEditingChanged(false)
-                        }
+                    dragGesture(configuration: configuration, geometry: geometry)
                 )
             }
             .frame(height: geometry.size.height)
